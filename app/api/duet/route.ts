@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Generate duet dialogue lines using Gemini
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-3.0-flash" });
     const result = await model.generateContent(
       `You are "${objectName}" with these traits: ${personality?.traits?.join(", ") || "witty, observant"}.
 
