@@ -5,10 +5,11 @@ import type { EnvironmentalEntity } from "@/types";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+const visionModel = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
+const textModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
 export async function identifyObject(imageBase64: string): Promise<VisionResult> {
-  const result = await model.generateContent([
+  const result = await visionModel.generateContent([
     {
       inlineData: {
         mimeType: "image/jpeg",
@@ -32,7 +33,7 @@ export async function generatePersonality(
   facts: string[]
 ): Promise<Personality> {
   const prompt = personalityPrompt(vision, facts);
-  const result = await model.generateContent(prompt);
+  const result = await textModel.generateContent(prompt);
   const text = result.response.text();
 
   const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -48,6 +49,6 @@ export async function generateEntityMonologue(
   facts: string[]
 ): Promise<string> {
   const prompt = entityMonologuePrompt(entity, facts);
-  const result = await model.generateContent(prompt);
+  const result = await textModel.generateContent(prompt);
   return result.response.text().replace(/^["']|["']$/g, "").trim();
 }
