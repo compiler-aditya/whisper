@@ -5,8 +5,8 @@ import type { EnvironmentalEntity } from "@/types";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-const visionModel = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
-const textModel = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
+const visionModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+const textModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
 export async function identifyObject(imageBase64: string): Promise<VisionResult> {
   const result = await visionModel.generateContent([
