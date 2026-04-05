@@ -5,7 +5,7 @@ import { useWhisperStore } from "@/store/whisper-store";
 import type { WhisperResponse, WhisperResult } from "@/types";
 
 const MAX_RETRIES = 1;
-const TIMEOUT_MS = 30000;
+const TIMEOUT_MS = 120000;
 
 export function useWhisper() {
   const {
