@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { VisionResult, Personality, ObjectMemory } from "@/types";
-import { VISION_PROMPT, ASSIST_VISION_PROMPT, personalityPrompt, assistPersonalityPrompt, entityMonologuePrompt } from "./prompts";
+import { VISION_PROMPT, ASSIST_VISION_PROMPT, SKY_VISION_PROMPT, personalityPrompt, assistPersonalityPrompt, skyPersonalityPrompt, entityMonologuePrompt } from "./prompts";
+import { findConstellation } from "./constellations";
 import type { EnvironmentalEntity } from "@/types";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
@@ -8,7 +9,8 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const visionModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 const textModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-export async function identifyObject(imageBase64: string, assistMode = false): Promise<VisionResult> {
+export async function identifyObject(imageBase64: string, assistMode = false, skyMode = false): Promise<VisionResult> {
+  const prompt = skyMode ? SKY_VISION_PROMPT : assistMode ? ASSIST_VISION_PROMPT : VISION_PROMPT;
   const result = await visionModel.generateContent([
     {
       inlineData: {
@@ -16,7 +18,7 @@ export async function identifyObject(imageBase64: string, assistMode = false): P
         data: imageBase64,
       },
     },
-    { text: assistMode ? ASSIST_VISION_PROMPT : VISION_PROMPT },
+    { text: prompt },
   ]);
 
   const text = result.response.text();
@@ -32,11 +34,28 @@ export async function generatePersonality(
   vision: VisionResult,
   facts: string[],
   previousEncounter?: ObjectMemory | null,
-  assistMode = false
+  assistMode = false,
+  skyMode = false,
+  artemisData?: string
 ): Promise<Personality> {
-  const prompt = assistMode
-    ? assistPersonalityPrompt(vision, facts)
-    : personalityPrompt(vision, facts, previousEncounter);
+  let prompt: string;
+  if (skyMode) {
+    // Detect constellation from vision result
+    const constellations = (vision as unknown as Record<string, unknown>).skyFeatures
+      ? ((vision as unknown as Record<string, unknown>).skyFeatures as { constellations?: string[] })?.constellations || []
+      : [];
+    let constellationProfile = null;
+    for (const name of constellations) {
+      constellationProfile = findConstellation(name);
+      if (constellationProfile) break;
+    }
+    prompt = skyPersonalityPrompt(vision, facts, artemisData || "", constellationProfile);
+  } else if (assistMode) {
+    prompt = assistPersonalityPrompt(vision, facts);
+  } else {
+    prompt = personalityPrompt(vision, facts, previousEncounter);
+  }
+
   const result = await textModel.generateContent(prompt);
   const text = result.response.text();
 
