@@ -40,7 +40,7 @@ export default function Home() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [assistMode, setAssistMode] = useState(false);
+  const [cameraMode, setCameraMode] = useState<"character" | "assist" | "sky">("character");
 
   // Sync Google session to local auth store
   useEffect(() => {
@@ -59,7 +59,12 @@ export default function Home() {
 
       try {
         const location = await getLocation();
-        const whisper = await startWhisper(imageBase64, location ?? undefined, assistMode);
+        const whisper = await startWhisper(
+          imageBase64,
+          location ?? undefined,
+          cameraMode === "assist",
+          cameraMode === "sky"
+        );
 
         if (whisper) {
           // Save map pin if we have location
@@ -79,7 +84,7 @@ export default function Home() {
         setProcessing(false);
       }
     },
-    [startWhisper, getLocation, setProcessing, addMapPin]
+    [startWhisper, getLocation, setProcessing, addMapPin, cameraMode]
   );
 
   // Called when reveal audio finishes — transition to bottom sheet
@@ -129,8 +134,8 @@ export default function Home() {
       <CameraView
         onCapture={handleCapture}
         disabled={isProcessing || sheetOpen}
-        assistMode={assistMode}
-        onToggleAssist={() => setAssistMode((m) => !m)}
+        mode={cameraMode}
+        onSetMode={setCameraMode}
       />
 
       {/* Progressive reveal overlay (replaces old LoadingWhisper) */}
