@@ -30,13 +30,13 @@ export default function CameraView({ onCapture, disabled }: CameraViewProps) {
 
   return (
     <div className="relative w-full h-full bg-black">
-      {/* Camera feed */}
+      {/* Camera feed — pointer-events-none prevents accidental taps on video from triggering anything */}
       <video
         ref={videoRef}
         autoPlay
         playsInline
         muted
-        className="w-full h-full object-cover"
+        className="w-full h-full object-cover pointer-events-none"
       />
       <canvas ref={canvasRef} className="hidden" />
 
