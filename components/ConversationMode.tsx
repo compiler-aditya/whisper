@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { useConversation } from "@/hooks/useConversation";
 import { useWhisperStore } from "@/store/whisper-store";
 
@@ -17,13 +17,22 @@ export default function ConversationMode() {
   const transcript = useWhisperStore((s) => s.transcript);
   const currentWhisper = useWhisperStore((s) => s.currentWhisper);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
 
   const starters = currentWhisper?.personality?.conversationStarters || [];
 
-  // Auto-scroll transcript
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [transcript]);
+
+  const handleStart = async () => {
+    setIsConnecting(true);
+    try {
+      await startConversation();
+    } finally {
+      setIsConnecting(false);
+    }
+  };
 
   if (!conversationActive) {
     return (
@@ -34,8 +43,14 @@ export default function ConversationMode() {
             {starters.map((starter, i) => (
               <button
                 key={i}
-                onClick={startConversation}
-                className="px-3 py-1.5 bg-white/[0.04] border border-white/[0.08] rounded-full text-white/50 text-[11px] hover:bg-violet-500/10 hover:border-violet-500/20 hover:text-violet-300 transition-all active:scale-95"
+                onClick={handleStart}
+                disabled={isConnecting}
+                className="px-3 py-1.5 text-[11px] transition-all active:scale-95 disabled:opacity-30"
+                style={{
+                  color: "var(--text-secondary)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                }}
               >
                 &ldquo;{starter}&rdquo;
               </button>
@@ -44,14 +59,36 @@ export default function ConversationMode() {
         )}
 
         <button
-          onClick={startConversation}
-          className="w-full py-3.5 bg-gradient-to-r from-violet-600 to-blue-600 rounded-xl text-white font-medium text-sm hover:from-violet-500 hover:to-blue-500 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+          onClick={handleStart}
+          disabled={isConnecting}
+          className="w-full py-3.5 text-sm font-medium transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
+          style={{
+            background: "var(--accent)",
+            color: "var(--bg)",
+            borderRadius: 12,
+          }}
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-          </svg>
-          Talk to this object
+          {isConnecting ? (
+            <>
+              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              Connecting...
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+              </svg>
+              Talk to this object
+            </>
+          )}
         </button>
+
+        {/* Error shown even when not connected */}
+        {error && (
+          <div className="px-3 py-2" style={{ background: "rgba(212,68,59,0.08)", border: "1px solid rgba(212,68,59,0.15)", borderRadius: 10 }}>
+            <p className="text-xs text-center" style={{ color: "var(--danger)" }}>{error}</p>
+          </div>
+        )}
       </div>
     );
   }
@@ -63,23 +100,27 @@ export default function ConversationMode() {
         <div className="flex items-center gap-2.5">
           <div className="relative">
             <span
-              className={`block w-2.5 h-2.5 rounded-full ${
-                isSpeaking
-                  ? "bg-violet-400"
+              className="block w-2.5 h-2.5 rounded-full"
+              style={{
+                background: isSpeaking
+                  ? "var(--accent)"
                   : isListening
-                    ? "bg-green-400"
-                    : "bg-white/30"
-              }`}
+                    ? "var(--eco)"
+                    : "var(--text-muted)",
+              }}
             />
             {(isSpeaking || isListening) && (
               <span
-                className={`absolute inset-0 rounded-full animate-ping ${
-                  isSpeaking ? "bg-violet-400/50" : "bg-green-400/50"
-                }`}
+                className="absolute inset-0 rounded-full animate-ping"
+                style={{
+                  background: isSpeaking
+                    ? "rgba(232,196,124,0.4)"
+                    : "rgba(61,221,182,0.4)",
+                }}
               />
             )}
           </div>
-          <span className="text-white/60 text-xs font-medium">
+          <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
             {isSpeaking
               ? "Speaking..."
               : isListening
@@ -90,9 +131,10 @@ export default function ConversationMode() {
 
         <button
           onClick={endConversation}
-          className="px-3 py-1.5 text-xs text-red-400/80 border border-red-400/20 rounded-full hover:bg-red-400/10 transition-colors"
+          className="px-3 py-1.5 text-xs transition-colors"
+          style={{ color: "var(--danger)", border: "1px solid rgba(212,68,59,0.2)", borderRadius: 8 }}
         >
-          End conversation
+          End
         </button>
       </div>
 
@@ -102,9 +144,11 @@ export default function ConversationMode() {
           {Array.from({ length: 7 }).map((_, i) => (
             <div
               key={i}
-              className="w-[3px] bg-gradient-to-t from-violet-500 to-blue-400 rounded-full wave-bar"
+              className="w-[2px] rounded-full wave-bar"
               style={{
-                height: "18px",
+                height: 18,
+                background: "var(--accent)",
+                opacity: 0.6,
                 animationDelay: `${i * 0.08}s`,
               }}
             />
@@ -115,35 +159,34 @@ export default function ConversationMode() {
       {/* Listening indicator */}
       {isListening && !isSpeaking && (
         <div className="flex items-center justify-center gap-1.5 py-3">
-          <div className="flex items-center gap-[2px]">
+          <div className="flex items-center gap-[3px]">
             {Array.from({ length: 3 }).map((_, i) => (
               <div
                 key={i}
-                className="w-1.5 h-1.5 rounded-full bg-green-400 animate-bounce"
-                style={{ animationDelay: `${i * 0.15}s` }}
+                className="w-1.5 h-1.5 rounded-full animate-bounce"
+                style={{ background: "var(--eco)", animationDelay: `${i * 0.15}s` }}
               />
             ))}
           </div>
-          <span className="text-white/30 text-[10px] ml-2">Speak now...</span>
+          <span className="text-[10px] ml-2" style={{ color: "var(--text-muted)" }}>Speak now...</span>
         </div>
       )}
 
       {/* Transcript */}
       {transcript.length > 0 && (
-        <div className="max-h-48 overflow-y-auto space-y-2.5 scrollbar-thin rounded-lg bg-white/[0.02] p-3">
+        <div className="max-h-48 overflow-y-auto space-y-2.5 scrollbar-thin p-3" style={{ background: "var(--surface-raised)", borderRadius: 12 }}>
           {transcript.map((entry, i) => (
             <div
               key={i}
-              className={`animate-fade-in ${
-                entry.role === "user" ? "text-right" : "text-left"
-              }`}
+              className={`animate-fade-in ${entry.role === "user" ? "text-right" : "text-left"}`}
             >
               <div
-                className={`inline-block max-w-[85%] px-3 py-2 rounded-2xl text-xs leading-relaxed ${
-                  entry.role === "user"
-                    ? "bg-blue-500/15 text-blue-200/80 rounded-br-sm"
-                    : "bg-white/5 text-white/70 rounded-bl-sm"
-                }`}
+                className="inline-block max-w-[85%] px-3 py-2 text-xs leading-relaxed"
+                style={{
+                  borderRadius: 12,
+                  background: entry.role === "user" ? "var(--accent-dim)" : "rgba(255,255,255,0.03)",
+                  color: entry.role === "user" ? "var(--accent)" : "var(--text-secondary)",
+                }}
               >
                 {entry.text}
               </div>
@@ -155,8 +198,8 @@ export default function ConversationMode() {
 
       {/* Error */}
       {error && (
-        <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
-          <p className="text-red-400/80 text-xs text-center">{error}</p>
+        <div className="px-3 py-2" style={{ background: "rgba(212,68,59,0.08)", border: "1px solid rgba(212,68,59,0.15)", borderRadius: 10 }}>
+          <p className="text-xs text-center" style={{ color: "var(--danger)" }}>{error}</p>
         </div>
       )}
     </div>

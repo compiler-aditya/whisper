@@ -25,46 +25,50 @@ export default function BottomSheet({ open, onClose, children }: BottomSheetProp
       setIsClosing(false);
       setMounted(false);
       onClose();
-    }, 300);
+    }, 400);
   };
 
   if (!mounted) return null;
 
   return (
     <div className="absolute inset-0 z-30">
-      {/* Backdrop */}
+      {/* Backdrop — no blur, just darkness */}
       <div
-        className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ${
+        className={`absolute inset-0 transition-opacity duration-400 ${
           isClosing ? "opacity-0" : "opacity-100"
         }`}
+        style={{ background: "rgba(5,5,5,0.7)" }}
         onClick={handleClose}
       />
 
-      {/* Sheet */}
+      {/* Sheet — sharp top edge, no rounded corners */}
       <div
         className={`
           absolute bottom-0 left-0 right-0
-          bg-gradient-to-b from-gray-900/95 to-black/98
-          backdrop-blur-xl
-          rounded-t-[28px]
-          max-h-[85vh] overflow-y-auto
-          shadow-[0_-10px_40px_rgba(0,0,0,0.5)]
-          safe-bottom
-          scrollbar-thin
+          max-h-[88vh] overflow-y-auto
+          safe-bottom scrollbar-thin
           ${isClosing ? "translate-y-full" : "animate-slide-up"}
-          transition-transform duration-300 ease-out
+          transition-transform duration-400 ease-out
         `}
+        style={{
+          background: "var(--surface)",
+          borderTop: "1px solid var(--border)",
+        }}
       >
         {/* Drag handle */}
         <div
-          className="sticky top-0 z-10 flex justify-center pt-3 pb-1 cursor-pointer bg-gradient-to-b from-gray-900/95 to-transparent"
+          className="sticky top-0 z-10 flex justify-center pt-4 pb-2 cursor-pointer"
+          style={{ background: "var(--surface)" }}
           onClick={handleClose}
         >
-          <div className="w-9 h-1 bg-white/20 rounded-full hover:bg-white/40 transition-colors" />
+          <div
+            className="w-8 h-[2px] rounded-full transition-colors"
+            style={{ background: "var(--text-muted)" }}
+          />
         </div>
 
         {/* Content */}
-        <div className="px-5 pb-8 pt-1">{children}</div>
+        <div className="px-6 pb-10 pt-2">{children}</div>
       </div>
     </div>
   );

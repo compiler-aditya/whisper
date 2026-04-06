@@ -6,9 +6,11 @@ import { useCamera } from "@/hooks/useCamera";
 interface CameraViewProps {
   onCapture: (imageBase64: string) => void;
   disabled?: boolean;
+  assistMode?: boolean;
+  onToggleAssist?: () => void;
 }
 
-export default function CameraView({ onCapture, disabled }: CameraViewProps) {
+export default function CameraView({ onCapture, disabled, assistMode, onToggleAssist }: CameraViewProps) {
   const { videoRef, canvasRef, startCamera, captureFrame, ready, error } =
     useCamera();
   const [flash, setFlash] = useState(false);
@@ -21,16 +23,14 @@ export default function CameraView({ onCapture, disabled }: CameraViewProps) {
     if (disabled || !ready) return;
     const frame = captureFrame();
     if (frame) {
-      // Flash effect
       setFlash(true);
-      setTimeout(() => setFlash(false), 150);
+      setTimeout(() => setFlash(false), 120);
       onCapture(frame);
     }
   };
 
   return (
-    <div className="relative w-full h-full bg-black">
-      {/* Camera feed — pointer-events-none prevents accidental taps on video from triggering anything */}
+    <div className="relative w-full h-full" style={{ background: "var(--bg)" }}>
       <video
         ref={videoRef}
         autoPlay
@@ -40,24 +40,51 @@ export default function CameraView({ onCapture, disabled }: CameraViewProps) {
       />
       <canvas ref={canvasRef} className="hidden" />
 
-      {/* Camera flash effect */}
+      {/* Flash */}
       {flash && (
-        <div className="absolute inset-0 bg-white/20 z-10 pointer-events-none" />
+        <div className="absolute inset-0 bg-white/10 z-10 pointer-events-none" />
       )}
 
-      {/* Error overlay */}
+      {/* Corner viewfinder marks */}
+      {ready && !disabled && (
+        <div className="absolute inset-0 pointer-events-none z-5">
+          {/* Top-left */}
+          <div className="absolute top-[22%] left-[12%]">
+            <div className="w-6 h-px" style={{ background: "var(--accent)", opacity: 0.4 }} />
+            <div className="h-6 w-px" style={{ background: "var(--accent)", opacity: 0.4 }} />
+          </div>
+          {/* Top-right */}
+          <div className="absolute top-[22%] right-[12%] flex flex-col items-end">
+            <div className="w-6 h-px" style={{ background: "var(--accent)", opacity: 0.4 }} />
+            <div className="h-6 w-px self-end" style={{ background: "var(--accent)", opacity: 0.4 }} />
+          </div>
+          {/* Bottom-left */}
+          <div className="absolute bottom-[28%] left-[12%] flex flex-col justify-end">
+            <div className="h-6 w-px" style={{ background: "var(--accent)", opacity: 0.4 }} />
+            <div className="w-6 h-px" style={{ background: "var(--accent)", opacity: 0.4 }} />
+          </div>
+          {/* Bottom-right */}
+          <div className="absolute bottom-[28%] right-[12%] flex flex-col items-end justify-end">
+            <div className="h-6 w-px self-end" style={{ background: "var(--accent)", opacity: 0.4 }} />
+            <div className="w-6 h-px" style={{ background: "var(--accent)", opacity: 0.4 }} />
+          </div>
+        </div>
+      )}
+
+      {/* Error */}
       {error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/90 p-6">
-          <div className="text-center space-y-4">
-            <div className="w-16 h-16 mx-auto rounded-full bg-white/5 flex items-center justify-center">
-              <svg className="w-8 h-8 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
-              </svg>
-            </div>
-            <p className="text-white/60 text-sm">{error}</p>
-            <label className="inline-block cursor-pointer bg-white/10 border border-white/20 rounded-full px-6 py-3 text-white text-sm hover:bg-white/20 transition-colors active:scale-95">
-              Upload a photo instead
+        <div className="absolute inset-0 flex items-center justify-center p-8" style={{ background: "var(--bg)", opacity: 0.97 }}>
+          <div className="text-center space-y-5">
+            <p className="text-sm" style={{ color: "var(--text-secondary)" }}>{error}</p>
+            <label
+              className="inline-block cursor-pointer text-sm py-3 px-6 transition-all active:scale-95"
+              style={{
+                color: "var(--text)",
+                border: "1px solid var(--border)",
+                borderRadius: 10,
+              }}
+            >
+              Upload a photo
               <input
                 type="file"
                 accept="image/*"
@@ -79,42 +106,57 @@ export default function CameraView({ onCapture, disabled }: CameraViewProps) {
         </div>
       )}
 
-      {/* Instruction text */}
-      {ready && !disabled && (
-        <div className="absolute top-12 left-0 right-0 text-center pointer-events-none">
-          <p className="text-white/50 text-xs font-light tracking-[0.25em] uppercase animate-pulse">
-            Point at anything
-          </p>
-        </div>
-      )}
-
-      {/* Capture button area */}
+      {/* Capture button + mode toggle */}
       {ready && (
-        <div className="absolute bottom-0 left-0 right-0 pb-10 pt-6 flex justify-center safe-bottom bg-gradient-to-t from-black/40 to-transparent">
+        <div className="absolute bottom-0 left-0 right-0 pb-10 pt-16 flex flex-col items-center gap-4 safe-bottom"
+          style={{ background: "linear-gradient(to top, rgba(5,5,5,0.6) 0%, transparent 100%)" }}
+        >
+          {/* Mode toggle */}
+          {onToggleAssist && !disabled && (
+            <button
+              onClick={onToggleAssist}
+              className="flex items-center gap-2 px-4 py-2 text-xs transition-all active:scale-95"
+              style={{
+                background: assistMode ? "rgba(61,221,182,0.12)" : "rgba(255,255,255,0.06)",
+                border: assistMode ? "1px solid rgba(61,221,182,0.25)" : "1px solid var(--border)",
+                borderRadius: 20,
+                color: assistMode ? "var(--eco)" : "var(--text-muted)",
+              }}
+            >
+              {assistMode ? (
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+                </svg>
+              ) : (
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+                </svg>
+              )}
+              {assistMode ? "Read & Help" : "Character"}
+            </button>
+          )}
           <button
             onClick={handleCapture}
             disabled={disabled}
             className={`
-              relative w-[72px] h-[72px] rounded-full
-              border-[3px] border-white/70
+              relative w-[68px] h-[68px] rounded-full
               flex items-center justify-center
-              transition-all duration-200
-              ${disabled
-                ? "opacity-30 cursor-not-allowed"
-                : "hover:border-white active:scale-90"
-              }
+              transition-all duration-300
+              ${disabled ? "opacity-20 cursor-not-allowed" : "active:scale-90"}
             `}
+            style={{
+              border: `2px solid ${disabled ? "rgba(237,232,224,0.15)" : "var(--accent)"}`,
+            }}
           >
             <div
-              className={`
-                w-[60px] h-[60px] rounded-full transition-all duration-150
-                ${disabled
-                  ? "bg-white/15"
-                  : "bg-white/85 hover:bg-white active:bg-white/70"
-                }
-              `}
+              className="w-[56px] h-[56px] rounded-full transition-all duration-200"
+              style={{
+                background: disabled
+                  ? "rgba(237,232,224,0.05)"
+                  : "var(--accent)",
+                opacity: disabled ? 0.3 : 0.9,
+              }}
             />
-            {/* Ripple indicator when not disabled */}
             {!disabled && <div className="absolute inset-0 capture-ripple" />}
           </button>
         </div>

@@ -25,67 +25,75 @@ export default function AccountDrawer({ open, onClose, onSelectWhisper }: Accoun
   return (
     <div className="absolute inset-0 z-50">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0" style={{ background: "rgba(5,5,5,0.8)" }} onClick={onClose} />
 
-      {/* Drawer from right */}
-      <div className="absolute top-0 right-0 bottom-0 w-80 bg-[#0e0e10]/98 backdrop-blur-xl border-l border-white/5 animate-slide-in-right overflow-y-auto scrollbar-thin">
+      {/* Drawer */}
+      <div
+        className="absolute top-0 right-0 bottom-0 w-80 overflow-y-auto scrollbar-thin animate-slide-in-right"
+        style={{ background: "var(--surface)", borderLeft: "1px solid var(--border)" }}
+      >
         {/* Header */}
-        <div className="sticky top-0 bg-[#0e0e10]/95 backdrop-blur-md border-b border-white/5 z-10">
-          <div className="px-5 py-4 flex items-center justify-between">
-            <h2 className="text-white/80 text-sm font-medium">Account</h2>
+        <div className="sticky top-0 z-10" style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
+          <div className="px-6 py-5 flex items-center justify-between">
+            <span className="text-xs tracking-[0.15em] uppercase" style={{ color: "var(--text-muted)" }}>Account</span>
             <button
               onClick={onClose}
-              className="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors"
+              className="w-7 h-7 flex items-center justify-center transition-colors"
+              style={{ color: "var(--text-muted)" }}
             >
-              <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
         </div>
 
-        {/* Profile card */}
-        <div className="px-5 py-5">
-          <div className="flex items-center gap-3.5 mb-5">
+        {/* Profile */}
+        <div className="px-6 py-6" style={{ borderBottom: "1px solid var(--border)" }}>
+          <div className="flex items-center gap-4 mb-6">
             <div
-              className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0"
-              style={{ backgroundColor: user.avatarColor + "30", borderColor: user.avatarColor + "50", borderWidth: 1 }}
+              className="w-11 h-11 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0"
+              style={{
+                background: user.avatarColor + "15",
+                border: `1px solid ${user.avatarColor}30`,
+                color: user.avatarColor,
+              }}
             >
               {user.name.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0">
-              <p className="text-white/90 text-sm font-medium truncate">{user.name}</p>
-              <p className="text-white/30 text-[11px] truncate">{user.email}</p>
+              <p className="text-sm font-light truncate" style={{ color: "var(--text)" }}>{user.name}</p>
+              <p className="text-[11px] truncate" style={{ color: "var(--text-muted)" }}>{user.email}</p>
             </div>
           </div>
 
-          {/* Stats row */}
-          <div className="grid grid-cols-3 gap-2 mb-6">
-            <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl px-3 py-2.5 text-center">
-              <p className="text-white/80 text-base font-semibold">{whispers.length}</p>
-              <p className="text-white/30 text-[9px] uppercase tracking-wider">Scans</p>
-            </div>
-            <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl px-3 py-2.5 text-center">
-              <p className="text-white/80 text-base font-semibold">{totalConversations}</p>
-              <p className="text-white/30 text-[9px] uppercase tracking-wider">Chats</p>
-            </div>
-            <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl px-3 py-2.5 text-center">
-              <p className="text-white/80 text-base font-semibold">{totalMessages}</p>
-              <p className="text-white/30 text-[9px] uppercase tracking-wider">Messages</p>
-            </div>
+          {/* Stats — clean, no boxes */}
+          <div className="flex gap-8">
+            {[
+              { value: whispers.length, label: "Scans" },
+              { value: totalConversations, label: "Chats" },
+              { value: totalMessages, label: "Messages" },
+            ].map(({ value, label }) => (
+              <div key={label}>
+                <p className="text-lg font-extralight" style={{ color: "var(--text)" }}>{value}</p>
+                <p className="text-[9px] tracking-[0.15em] uppercase" style={{ color: "var(--text-muted)" }}>{label}</p>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Activity history */}
-        <div className="px-5 pb-4">
-          <h3 className="text-white/40 text-[10px] uppercase tracking-wider mb-3">History</h3>
+        {/* History */}
+        <div className="px-6 py-5">
+          <h3 className="text-[9px] tracking-[0.2em] uppercase mb-4" style={{ color: "var(--text-muted)" }}>
+            History
+          </h3>
 
           {whispers.length === 0 ? (
-            <p className="text-white/20 text-xs text-center py-6">
-              No activity yet. Scan something!
+            <p className="text-xs text-center py-8" style={{ color: "var(--text-muted)" }}>
+              No activity yet
             </p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1">
               {whispers.map((w) => {
                 const convos = conversations.filter((c) => c.whisperId === w.id);
                 const messageCount = convos.reduce((acc, c) => acc + c.transcript.length, 0);
@@ -94,12 +102,15 @@ export default function AccountDrawer({ open, onClose, onSelectWhisper }: Accoun
                   <button
                     key={w.id}
                     onClick={() => { onSelectWhisper(w); onClose(); }}
-                    className="w-full text-left rounded-xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.04] transition-all group"
+                    className="w-full text-left py-3 transition-all group"
+                    style={{ borderBottom: "1px solid var(--border)" }}
                   >
-                    <div className="px-3 py-3 flex items-start gap-3">
-                      {/* Thumbnail */}
+                    <div className="flex items-start gap-3">
                       {w.imageBase64 ? (
-                        <div className="w-11 h-11 rounded-lg overflow-hidden border border-white/10 flex-shrink-0">
+                        <div
+                          className="w-10 h-10 overflow-hidden flex-shrink-0"
+                          style={{ borderRadius: 8, border: "1px solid var(--border)" }}
+                        >
                           <img
                             src={`data:image/jpeg;base64,${w.imageBase64}`}
                             alt={w.objectName}
@@ -107,40 +118,37 @@ export default function AccountDrawer({ open, onClose, onSelectWhisper }: Accoun
                           />
                         </div>
                       ) : (
-                        <div className="w-11 h-11 rounded-lg bg-gradient-to-br from-violet-500/20 to-blue-500/20 flex items-center justify-center flex-shrink-0">
-                          <span className="text-sm">{w.isEnvironmental ? "🌍" : "🔊"}</span>
+                        <div
+                          className="w-10 h-10 flex items-center justify-center flex-shrink-0"
+                          style={{
+                            borderRadius: 8,
+                            background: w.isEnvironmental ? "var(--eco-dim)" : "var(--accent-dim)",
+                          }}
+                        >
+                          <span className="text-xs">{w.isEnvironmental ? "🌍" : "🔊"}</span>
                         </div>
                       )}
 
                       <div className="flex-1 min-w-0">
-                        <p className="text-white/80 text-sm font-medium truncate group-hover:text-white transition-colors">
+                        <p className="text-sm font-light truncate transition-colors" style={{ color: "var(--text-secondary)" }}>
                           {w.objectName}
                         </p>
                         {w.entityName && (
-                          <p className="text-emerald-400/50 text-[10px]">{w.entityName}</p>
+                          <p className="text-[10px]" style={{ color: "var(--eco)", opacity: 0.6 }}>{w.entityName}</p>
                         )}
-
-                        {/* Conversation info */}
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-white/25 text-[10px]">
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
                             {formatTimeAgo(w.timestamp)}
                           </span>
                           {messageCount > 0 && (
                             <>
-                              <span className="text-white/10">·</span>
-                              <span className="text-violet-400/50 text-[10px]">
-                                {messageCount} messages
+                              <span style={{ color: "var(--text-muted)", fontSize: 8 }}>·</span>
+                              <span className="text-[10px]" style={{ color: "var(--accent)", opacity: 0.5 }}>
+                                {messageCount} msg
                               </span>
                             </>
                           )}
                         </div>
-
-                        {/* Last conversation preview */}
-                        {convos.length > 0 && convos[0].transcript.length > 0 && (
-                          <p className="text-white/20 text-[10px] mt-1 truncate italic">
-                            &ldquo;{convos[0].transcript[0].text}&rdquo;
-                          </p>
-                        )}
                       </div>
                     </div>
                   </button>
@@ -151,10 +159,15 @@ export default function AccountDrawer({ open, onClose, onSelectWhisper }: Accoun
         </div>
 
         {/* Sign out */}
-        <div className="px-5 py-5 border-t border-white/5 mt-2">
+        <div className="px-6 py-6" style={{ borderTop: "1px solid var(--border)" }}>
           <button
             onClick={() => { signOut(); nextAuthSignOut({ redirect: false }); onClose(); }}
-            className="w-full py-2.5 text-xs text-red-400/60 border border-red-400/10 rounded-xl hover:bg-red-400/5 hover:text-red-400/80 transition-all"
+            className="w-full py-2.5 text-xs transition-all active:scale-[0.98]"
+            style={{
+              color: "var(--danger)",
+              border: "1px solid rgba(212,68,59,0.15)",
+              borderRadius: 10,
+            }}
           >
             Sign Out
           </button>

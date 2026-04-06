@@ -8,48 +8,57 @@ interface ObjectCardProps {
 
 export default function ObjectCard({ whisper }: ObjectCardProps) {
   return (
-    <div className="space-y-3">
-      {/* Entity badge for environmental mode */}
+    <div className="space-y-4">
+      {/* Entity badge — environmental mode */}
       {whisper.isEnvironmental && whisper.entityName && (
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full w-fit">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-emerald-300 text-xs font-medium">
+        <div className="flex items-center gap-2">
+          <div
+            className="w-1.5 h-1.5 rounded-full animate-pulse"
+            style={{ background: "var(--eco)" }}
+          />
+          <span className="text-xs font-light" style={{ color: "var(--eco)" }}>
             {whisper.entityName} is speaking
           </span>
         </div>
       )}
 
-      {/* Object name */}
-      <h2 className="text-white text-xl font-semibold">
+      {/* Object name — large, light weight */}
+      <h2
+        className="text-[28px] font-extralight tracking-[-0.02em] leading-tight"
+        style={{ color: "var(--text)" }}
+      >
         {whisper.objectName}
       </h2>
 
-      {/* Traits */}
-      <div className="flex flex-wrap gap-1.5">
-        {whisper.personality.traits.map((trait) => (
-          <span
-            key={trait}
-            className="px-2.5 py-0.5 bg-white/5 border border-white/10 rounded-full text-white/50 text-xs"
-          >
-            {trait}
-          </span>
-        ))}
-      </div>
+      {/* Traits — inline text, not pills */}
+      <p className="text-xs font-light" style={{ color: "var(--text-muted)" }}>
+        {whisper.personality.traits.join(" / ")}
+      </p>
 
-      {/* Monologue text */}
-      <p className="text-white/70 text-sm leading-relaxed italic">
+      {/* Monologue */}
+      <p
+        className="text-sm leading-[1.7] font-light italic"
+        style={{ color: "var(--text-secondary)" }}
+      >
         &ldquo;{whisper.monologue}&rdquo;
       </p>
 
       {/* Facts */}
       {whisper.facts.length > 0 && (
         <details className="group">
-          <summary className="text-white/30 text-xs cursor-pointer hover:text-white/50 transition-colors">
+          <summary
+            className="text-[11px] cursor-pointer transition-colors"
+            style={{ color: "var(--text-muted)" }}
+          >
             {whisper.facts.length} facts gathered
           </summary>
-          <ul className="mt-2 space-y-1">
+          <ul className="mt-3 space-y-2">
             {whisper.facts.slice(0, 3).map((fact, i) => (
-              <li key={i} className="text-white/30 text-xs leading-relaxed">
+              <li
+                key={i}
+                className="text-xs leading-relaxed font-light"
+                style={{ color: "var(--text-muted)" }}
+              >
                 {fact.length > 150 ? `${fact.slice(0, 150)}...` : fact}
               </li>
             ))}
