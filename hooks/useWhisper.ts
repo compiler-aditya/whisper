@@ -22,7 +22,8 @@ export function useWhisper() {
   const startWhisper = useCallback(
     async (
       imageBase64: string,
-      location?: { lat: number; lng: number }
+      location?: { lat: number; lng: number },
+      assistMode?: boolean
     ) => {
       setProcessing(true, "recognizing");
       setRevealData({ imageBase64 });
@@ -34,7 +35,7 @@ export function useWhisper() {
         const res = await fetch("/api/whisper", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imageBase64, location, previousEncounter }),
+          body: JSON.stringify({ imageBase64, location, previousEncounter, assistMode }),
         });
 
         if (!res.ok || !res.body) {

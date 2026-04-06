@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { VisionResult, Personality, ObjectMemory } from "@/types";
-import { VISION_PROMPT, personalityPrompt, entityMonologuePrompt } from "./prompts";
+import { VISION_PROMPT, ASSIST_VISION_PROMPT, personalityPrompt, assistPersonalityPrompt, entityMonologuePrompt } from "./prompts";
 import type { EnvironmentalEntity } from "@/types";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
@@ -8,7 +8,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const visionModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 const textModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-export async function identifyObject(imageBase64: string): Promise<VisionResult> {
+export async function identifyObject(imageBase64: string, assistMode = false): Promise<VisionResult> {
   const result = await visionModel.generateContent([
     {
       inlineData: {
@@ -16,7 +16,7 @@ export async function identifyObject(imageBase64: string): Promise<VisionResult>
         data: imageBase64,
       },
     },
-    { text: VISION_PROMPT },
+    { text: assistMode ? ASSIST_VISION_PROMPT : VISION_PROMPT },
   ]);
 
   const text = result.response.text();
@@ -31,9 +31,12 @@ export async function identifyObject(imageBase64: string): Promise<VisionResult>
 export async function generatePersonality(
   vision: VisionResult,
   facts: string[],
-  previousEncounter?: ObjectMemory | null
+  previousEncounter?: ObjectMemory | null,
+  assistMode = false
 ): Promise<Personality> {
-  const prompt = personalityPrompt(vision, facts, previousEncounter);
+  const prompt = assistMode
+    ? assistPersonalityPrompt(vision, facts)
+    : personalityPrompt(vision, facts, previousEncounter);
   const result = await textModel.generateContent(prompt);
   const text = result.response.text();
 

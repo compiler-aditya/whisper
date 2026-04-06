@@ -9,7 +9,7 @@ import type { Personality } from "@/types";
 const FALLBACK_VOICE_ID = "pNInz6obpgDQGcFmaJgB";
 
 export async function POST(req: NextRequest) {
-  const { imageBase64, location, previousEncounter } = await req.json();
+  const { imageBase64, location, previousEncounter, assistMode } = await req.json();
 
   if (!imageBase64) {
     return new Response(
@@ -31,9 +31,9 @@ export async function POST(req: NextRequest) {
         // ── Stage 1: Vision ──────────────────────────────────
         let vision;
         try {
-          vision = await identifyObject(imageBase64);
+          vision = await identifyObject(imageBase64, !!assistMode);
         } catch {
-          vision = await identifyObject(imageBase64); // retry once
+          vision = await identifyObject(imageBase64, !!assistMode); // retry once
         }
         send("vision", vision);
 
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
         let entityName: string | undefined;
 
         try {
-          personality = await generatePersonality(vision, [], previousEncounter);
+          personality = await generatePersonality(vision, [], previousEncounter, !!assistMode);
         } catch {
           personality = {
             name: `The ${vision.objectType}`,
@@ -71,8 +71,8 @@ export async function POST(req: NextRequest) {
           };
         }
 
-        // Environmental override
-        if (vision.isEnvironmental && vision.environmentalCategory) {
+        // Environmental override (skip in assist mode)
+        if (!assistMode && vision.isEnvironmental && vision.environmentalCategory) {
           const entity = getAffectedEntity(vision.environmentalCategory);
           if (entity) {
             entityName = entity.name;
