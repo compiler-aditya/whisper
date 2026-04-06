@@ -123,3 +123,19 @@ export interface ConversationResponse {
   agentId: string;
   signedUrl: string;
 }
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  avatarColor: string;
+  createdAt: number;
+}
+
+export interface ConversationHistory {
+  whisperId: string;
+  objectName: string;
+  transcript: TranscriptEntry[];
+  startedAt: number;
+  endedAt?: number;
+}
