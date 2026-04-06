@@ -10,8 +10,11 @@ import ConversationMode from "@/components/ConversationMode";
 import ShareButton from "@/components/ShareButton";
 import DuetMode from "@/components/DuetMode";
 import HistoryDrawer from "@/components/HistoryDrawer";
+import AuthScreen from "@/components/AuthScreen";
+import AccountDrawer from "@/components/AccountDrawer";
 import { useWhisper } from "@/hooks/useWhisper";
 import { useWhisperStore } from "@/store/whisper-store";
+import { useAuthStore } from "@/store/auth-store";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import type { WhisperResult } from "@/types";
 
@@ -28,10 +31,17 @@ export default function Home() {
   } = useWhisper();
   const whispers = useWhisperStore((s) => s.whispers);
   const addMapPin = useWhisperStore((s) => s.addMapPin);
+  const user = useAuthStore((s) => s.user);
   const { getLocation } = useGeolocation();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Show auth screen if not logged in
+  if (!user) {
+    return <AuthScreen />;
+  }
 
   const handleCapture = useCallback(
     async (imageBase64: string) => {
@@ -186,6 +196,13 @@ export default function Home() {
         onSelect={handleHistorySelect}
       />
 
+      {/* Account drawer */}
+      <AccountDrawer
+        open={accountOpen}
+        onClose={() => setAccountOpen(false)}
+        onSelectWhisper={handleHistorySelect}
+      />
+
       {/* Top bar */}
       <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 pt-4 pointer-events-none">
         <h1 className="text-white/40 text-xs font-light tracking-[0.3em] uppercase">
@@ -215,6 +232,17 @@ export default function Home() {
               </button>
             </>
           )}
+
+          {/* Account button */}
+          <button
+            onClick={() => setAccountOpen(true)}
+            className="w-8 h-8 rounded-full bg-black/30 backdrop-blur-md border border-white/10 flex items-center justify-center hover:bg-black/50 transition-colors"
+            style={{ borderColor: user.avatarColor + "40" }}
+          >
+            <span className="text-[10px] font-bold" style={{ color: user.avatarColor }}>
+              {user.name.charAt(0).toUpperCase()}
+            </span>
+          </button>
         </div>
       </div>
     </main>

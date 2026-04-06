@@ -2,6 +2,7 @@
 
 import { useRef, useCallback, useState, useEffect } from "react";
 import { useWhisperStore } from "@/store/whisper-store";
+import { useAuthStore } from "@/store/auth-store";
 
 /**
  * ElevenLabs Agents WebSocket conversation hook.
@@ -20,6 +21,7 @@ export function useConversation() {
   const audioQueueRef = useRef<string[]>([]); // base64 audio chunks
   const isPlayingRef = useRef(false);
   const outputFormatRef = useRef<string>("pcm_16000");
+  const conversationStartRef = useRef<number>(0);
 
   const {
     conversationActive,
@@ -163,6 +165,7 @@ export function useConversation() {
     setError(null);
     clearTranscript();
     stopPlayback();
+    conversationStartRef.current = Date.now();
 
     try {
       // Create agent and get signed URL from our API route
@@ -308,7 +311,19 @@ export function useConversation() {
   ]);
 
   const endConversation = useCallback(() => {
-    const { agentId } = useWhisperStore.getState();
+    const { agentId, transcript, currentWhisper: cw } = useWhisperStore.getState();
+    const { addConversation, user } = useAuthStore.getState();
+
+    // Save conversation history if user is logged in and there are messages
+    if (user && cw && transcript.length > 0) {
+      addConversation({
+        whisperId: cw.id,
+        objectName: cw.objectName,
+        transcript: [...transcript],
+        startedAt: conversationStartRef.current || Date.now(),
+        endedAt: Date.now(),
+      });
+    }
 
     if (wsRef.current) {
       wsRef.current.close();
