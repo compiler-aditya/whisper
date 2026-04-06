@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import CameraView from "@/components/CameraView";
 import WhisperReveal from "@/components/WhisperReveal";
 import BottomSheet from "@/components/BottomSheet";
@@ -32,15 +33,32 @@ export default function Home() {
   const whispers = useWhisperStore((s) => s.whispers);
   const addMapPin = useWhisperStore((s) => s.addMapPin);
   const user = useAuthStore((s) => s.user);
+  const authSignUp = useAuthStore((s) => s.signUp);
+  const { data: session } = useSession();
   const { getLocation } = useGeolocation();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Show auth screen if not logged in
-  if (!user) {
+  // Sync Google session to local auth store
+  useEffect(() => {
+    if (session?.user && !user) {
+      authSignUp(
+        session.user.name || "User",
+        session.user.email || "google@user"
+      );
+    }
+  }, [session, user, authSignUp]);
+
+  // Show auth screen if not logged in (and no Google session)
+  if (!user && !session?.user) {
     return <AuthScreen />;
+  }
+
+  // Brief loading state while syncing Google session
+  if (!user) {
+    return <div className="h-full w-full bg-black" />;
   }
 
   const handleCapture = useCallback(

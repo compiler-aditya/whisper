@@ -1,5 +1,6 @@
 "use client";
 
+import { signOut as nextAuthSignOut } from "next-auth/react";
 import { useAuthStore } from "@/store/auth-store";
 import { useWhisperStore } from "@/store/whisper-store";
 import type { WhisperResult } from "@/types";
@@ -152,7 +153,7 @@ export default function AccountDrawer({ open, onClose, onSelectWhisper }: Accoun
         {/* Sign out */}
         <div className="px-5 py-5 border-t border-white/5 mt-2">
           <button
-            onClick={() => { signOut(); onClose(); }}
+            onClick={() => { signOut(); nextAuthSignOut({ redirect: false }); onClose(); }}
             className="w-full py-2.5 text-xs text-red-400/60 border border-red-400/10 rounded-xl hover:bg-red-400/5 hover:text-red-400/80 transition-all"
           >
             Sign Out
