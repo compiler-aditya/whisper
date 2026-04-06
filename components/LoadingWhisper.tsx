@@ -9,7 +9,8 @@ interface LoadingWhisperProps {
 const STAGES: { key: ProcessingStage; label: string }[] = [
   { key: "capturing", label: "Seeing" },
   { key: "recognizing", label: "Recognizing" },
-  { key: "generating", label: "Creating voice" },
+  { key: "personality", label: "Creating personality" },
+  { key: "voice", label: "Designing voice" },
   { key: "speaking", label: "Speaking" },
 ];
 

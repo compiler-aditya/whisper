@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import type { VisionResult, Personality } from "@/types";
+import type { VisionResult, Personality, ObjectMemory } from "@/types";
 import { VISION_PROMPT, personalityPrompt, entityMonologuePrompt } from "./prompts";
 import type { EnvironmentalEntity } from "@/types";
 
@@ -30,9 +30,10 @@ export async function identifyObject(imageBase64: string): Promise<VisionResult>
 
 export async function generatePersonality(
   vision: VisionResult,
-  facts: string[]
+  facts: string[],
+  previousEncounter?: ObjectMemory | null
 ): Promise<Personality> {
-  const prompt = personalityPrompt(vision, facts);
+  const prompt = personalityPrompt(vision, facts, previousEncounter);
   const result = await textModel.generateContent(prompt);
   const text = result.response.text();
 

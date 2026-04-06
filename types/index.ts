@@ -13,6 +13,7 @@ export interface Personality {
   voiceDescription: string;
   monologue: string;
   systemPrompt: string;
+  conversationStarters?: string[];
 }
 
 export interface WhisperResult {
@@ -46,7 +47,7 @@ export interface Clip {
   whisperId: string;
   objectName: string;
   entityName?: string;
-  audioBlob?: string; // base64 of mixed audio
+  audioBlob?: string;
   voiceAudioBase64: string;
   timestamp: number;
 }
@@ -68,11 +69,23 @@ export interface EnvironmentalEntity {
 }
 
 export type ProcessingStage =
+  | "idle"
   | "capturing"
   | "recognizing"
-  | "generating"
+  | "personality"
+  | "voice"
   | "speaking"
-  | "idle";
+  | "complete";
+
+export interface ObjectMemory {
+  objectType: string;
+  material: string;
+  name: string;
+  traits: string[];
+  scanCount: number;
+  firstSeen: number;
+  lastSeen: number;
+}
 
 export interface ConversationState {
   active: boolean;
@@ -84,6 +97,7 @@ export interface ConversationState {
 export interface WhisperRequest {
   imageBase64: string;
   location?: GeoLocation;
+  previousEncounter?: ObjectMemory | null;
 }
 
 export interface WhisperResponse {

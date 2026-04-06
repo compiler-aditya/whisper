@@ -2,10 +2,7 @@
 
 import { useCallback } from "react";
 import { useWhisperStore } from "@/store/whisper-store";
-import type { WhisperResponse, WhisperResult } from "@/types";
-
-const MAX_RETRIES = 1;
-const TIMEOUT_MS = 120000;
+import type { WhisperResult, VisionResult, Personality, ObjectMemory } from "@/types";
 
 export function useWhisper() {
   const {
@@ -13,9 +10,13 @@ export function useWhisper() {
     setProcessingStage,
     addWhisper,
     setCurrentWhisper,
+    setRevealData,
     currentWhisper,
     isProcessing,
     processingStage,
+    revealData,
+    objectMemories,
+    upsertObjectMemory,
   } = useWhisperStore();
 
   const startWhisper = useCallback(
@@ -24,75 +25,166 @@ export function useWhisper() {
       location?: { lat: number; lng: number }
     ) => {
       setProcessing(true, "recognizing");
+      setRevealData({ imageBase64 });
 
-      let lastError: Error | null = null;
+      // Check for previous encounters
+      const previousEncounter = findPreviousEncounter(objectMemories, null);
 
-      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-        try {
-          if (attempt > 0) {
-            setProcessingStage("recognizing");
-            // Brief pause so user sees the retry stage
-            await new Promise((r) => setTimeout(r, 300));
-          }
+      try {
+        const res = await fetch("/api/whisper", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageBase64, location, previousEncounter }),
+        });
 
-          setProcessingStage("generating");
+        if (!res.ok || !res.body) {
+          throw new Error(`Server error (${res.status})`);
+        }
 
-          // Fetch with timeout
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
 
-          const res = await fetch("/api/whisper", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ imageBase64, location }),
-            signal: controller.signal,
-          });
+        let vision: VisionResult | null = null;
+        let personality: Personality | null = null;
+        let entityName: string | undefined;
+        let voiceId = "";
+        let audioBase64 = "";
+        let facts: string[] = [];
+        let whisperId = "";
+        let finalSystemPrompt = "";
 
-          clearTimeout(timeoutId);
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-          if (!res.ok) {
-            const err = await res.json().catch(() => ({ error: `Server error (${res.status})` }));
-            throw new Error(err.error || `Request failed (${res.status})`);
-          }
+          buffer += decoder.decode(value, { stream: true });
 
-          const data: WhisperResponse = await res.json();
+          // Parse SSE events from buffer
+          const events = buffer.split("\n\n");
+          buffer = events.pop() || ""; // keep incomplete chunk
 
-          // Validate response has required fields
-          if (!data.audioBase64 || !data.voiceId) {
-            throw new Error("Incomplete response from server");
-          }
+          for (const event of events) {
+            const eventMatch = event.match(/^event: (\w+)\ndata: ([\s\S]+)$/);
+            if (!eventMatch) continue;
 
-          setProcessingStage("speaking");
+            const [, type, dataStr] = eventMatch;
+            let data;
+            try {
+              data = JSON.parse(dataStr);
+            } catch {
+              continue;
+            }
 
-          const whisper: WhisperResult = {
-            ...data,
-            location,
-            timestamp: Date.now(),
-            imageBase64,
-          };
+            switch (type) {
+              case "vision":
+                vision = data as VisionResult;
+                setProcessingStage("personality");
+                setRevealData({
+                  imageBase64,
+                  objectType: vision.objectType,
+                  material: vision.material,
+                  condition: vision.condition,
+                });
+                // Now we know the object type, find memory match
+                const match = findPreviousEncounter(objectMemories, vision);
+                if (match && !previousEncounter) {
+                  // We could use this for future calls but personality is already generating
+                }
+                break;
 
-          addWhisper(whisper);
-          return whisper;
-        } catch (err) {
-          lastError = err instanceof Error ? err : new Error("Unknown error");
-          console.error(`Whisper attempt ${attempt + 1} failed:`, lastError.message);
+              case "personality":
+                personality = data as Personality & { entityName?: string };
+                entityName = (data as { entityName?: string }).entityName;
+                setProcessingStage("voice");
+                setRevealData({
+                  imageBase64,
+                  objectType: vision?.objectType,
+                  material: vision?.material,
+                  condition: vision?.condition,
+                  name: personality.name,
+                  traits: personality.traits,
+                  monologue: personality.monologue,
+                  entityName,
+                  conversationStarters: personality.conversationStarters,
+                });
+                break;
 
-          if (lastError.name === "AbortError") {
-            lastError = new Error("Request timed out. Please try again.");
-            break; // Don't retry timeouts
-          }
+              case "voice":
+                voiceId = data.voiceId;
+                audioBase64 = data.audioBase64;
+                setProcessingStage("speaking");
+                setRevealData({
+                  imageBase64,
+                  objectType: vision?.objectType,
+                  material: vision?.material,
+                  condition: vision?.condition,
+                  name: personality?.name,
+                  traits: personality?.traits,
+                  monologue: personality?.monologue,
+                  entityName,
+                  conversationStarters: personality?.conversationStarters,
+                  audioBase64,
+                });
+                break;
 
-          if (attempt < MAX_RETRIES) {
-            // Brief pause before retry
-            await new Promise((r) => setTimeout(r, 500));
+              case "done":
+                whisperId = data.id;
+                facts = data.facts || [];
+                finalSystemPrompt = data.systemPrompt || personality?.systemPrompt || "";
+                setProcessingStage("complete");
+                break;
+
+              case "error":
+                throw new Error(data.message || "Pipeline failed");
+            }
           }
         }
-      }
 
-      setProcessing(false);
-      throw lastError || new Error("Whisper failed");
+        if (!personality || !voiceId || !audioBase64) {
+          throw new Error("Incomplete response from server");
+        }
+
+        // Update system prompt with facts
+        if (finalSystemPrompt) {
+          personality.systemPrompt = finalSystemPrompt;
+        }
+
+        const whisper: WhisperResult = {
+          id: whisperId,
+          objectName: personality.name,
+          personality,
+          monologue: personality.monologue,
+          voiceId,
+          audioBase64,
+          facts,
+          isEnvironmental: vision?.isEnvironmental ?? false,
+          entityName,
+          location,
+          timestamp: Date.now(),
+          imageBase64,
+        };
+
+        addWhisper(whisper);
+
+        // Save to object memory
+        if (vision) {
+          upsertObjectMemory({
+            objectType: vision.objectType,
+            material: vision.material,
+            name: personality.name,
+            traits: personality.traits,
+          });
+        }
+
+        return whisper;
+      } catch (err) {
+        setProcessing(false);
+        setRevealData(null);
+        throw err instanceof Error ? err : new Error("Whisper failed");
+      }
     },
-    [setProcessing, setProcessingStage, addWhisper]
+    [setProcessing, setProcessingStage, addWhisper, setRevealData, objectMemories, upsertObjectMemory]
   );
 
   return {
@@ -100,7 +192,23 @@ export function useWhisper() {
     currentWhisper,
     isProcessing,
     processingStage,
+    revealData,
     setCurrentWhisper,
     setProcessing,
+    setRevealData,
   };
+}
+
+function findPreviousEncounter(
+  memories: ObjectMemory[],
+  vision: VisionResult | null
+): ObjectMemory | null {
+  if (!vision || memories.length === 0) return null;
+  const key = `${vision.objectType.toLowerCase()}|${vision.material.toLowerCase()}`;
+  return (
+    memories.find(
+      (m) =>
+        `${m.objectType.toLowerCase()}|${m.material.toLowerCase()}` === key
+    ) ?? null
+  );
 }

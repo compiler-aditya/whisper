@@ -15,7 +15,10 @@ export default function ConversationMode() {
   } = useConversation();
 
   const transcript = useWhisperStore((s) => s.transcript);
+  const currentWhisper = useWhisperStore((s) => s.currentWhisper);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
+
+  const starters = currentWhisper?.personality?.conversationStarters || [];
 
   // Auto-scroll transcript
   useEffect(() => {
@@ -24,15 +27,32 @@ export default function ConversationMode() {
 
   if (!conversationActive) {
     return (
-      <button
-        onClick={startConversation}
-        className="w-full py-3.5 bg-gradient-to-r from-violet-600 to-blue-600 rounded-xl text-white font-medium text-sm hover:from-violet-500 hover:to-blue-500 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-        </svg>
-        Talk to this object
-      </button>
+      <div className="space-y-3">
+        {/* Conversation starter chips */}
+        {starters.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {starters.map((starter, i) => (
+              <button
+                key={i}
+                onClick={startConversation}
+                className="px-3 py-1.5 bg-white/[0.04] border border-white/[0.08] rounded-full text-white/50 text-[11px] hover:bg-violet-500/10 hover:border-violet-500/20 hover:text-violet-300 transition-all active:scale-95"
+              >
+                &ldquo;{starter}&rdquo;
+              </button>
+            ))}
+          </div>
+        )}
+
+        <button
+          onClick={startConversation}
+          className="w-full py-3.5 bg-gradient-to-r from-violet-600 to-blue-600 rounded-xl text-white font-medium text-sm hover:from-violet-500 hover:to-blue-500 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+          </svg>
+          Talk to this object
+        </button>
+      </div>
     );
   }
 
@@ -41,7 +61,6 @@ export default function ConversationMode() {
       {/* Active conversation header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          {/* Animated status orb */}
           <div className="relative">
             <span
               className={`block w-2.5 h-2.5 rounded-full ${

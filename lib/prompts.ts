@@ -1,4 +1,4 @@
-import type { VisionResult, EnvironmentalEntity } from "@/types";
+import type { VisionResult, EnvironmentalEntity, ObjectMemory } from "@/types";
 
 export const VISION_PROMPT = `You are a vision AI for the app "Whisper" where objects speak to their owners.
 
@@ -17,11 +17,20 @@ Be specific and observational. Notice small details — chips, stains, wear patt
 
 Return ONLY the JSON object, nothing else.`;
 
-export function personalityPrompt(vision: VisionResult, facts: string[]): string {
+export function personalityPrompt(
+  vision: VisionResult,
+  facts: string[],
+  previousEncounter?: ObjectMemory | null
+): string {
   const factsSection =
     facts.length > 0
       ? `\n\nReal facts about this object (weave these naturally into the monologue, don't recite them):\n${facts.map((f, i) => `${i + 1}. ${f}`).join("\n")}`
       : "";
+
+  const memorySection = previousEncounter
+    ? `\n\nIMPORTANT — This person has scanned a similar ${previousEncounter.objectType} before! Last time it was called "${previousEncounter.name}" with traits: ${previousEncounter.traits.join(", ")}. They've scanned objects like this ${previousEncounter.scanCount} time(s). First encounter was ${new Date(previousEncounter.firstSeen).toLocaleDateString()}.
+Reference this history! Maybe you remember them, comment on being scanned again, joke about being famous, or notice how things have changed. This continuity makes the experience magical.`
+    : "";
 
   return `You are creating a character for the app "Whisper" where everyday objects speak with unique personalities.
 
@@ -29,7 +38,7 @@ Object: ${vision.objectType}
 Material: ${vision.material}
 Condition: ${vision.condition}
 Context: ${vision.context}
-${factsSection}
+${factsSection}${memorySection}
 
 Create a character for this object. Return a JSON object with these exact fields:
 
@@ -37,8 +46,9 @@ Create a character for this object. Return a JSON object with these exact fields
   "name": "A name for this object's character (e.g., 'The Morning Mug', 'Old Reliable')",
   "traits": ["3-5 personality traits, e.g., sarcastic", "world-weary", "secretly caring"],
   "voiceDescription": "A voice design prompt for ElevenLabs (20-200 chars). Format: 'Native English. [Gender], [age]. [Quality]. Persona: [2-5 words]. Emotion: [2-3 adjectives]. [Timbre/pacing description].' Example: 'Native English. Male, elderly. Broadcast quality. Persona: wise weathered observer. Emotion: warm, dry, amused. Deep gravelly voice with slow deliberate pacing.'",
-  "monologue": "A 100-400 character first-person monologue from this object to its owner. Personality-driven, witty, observational. Reference specific details from the vision analysis. Include one real fact naturally woven in. Make it funny, touching, or surprising — something worth sharing. The object addresses the user directly.",
-  "systemPrompt": "A system prompt for an AI agent that will continue the conversation AS this object. Include: who you are, your personality, your relationship with the owner, what you know. Include the real facts as knowledge. Stay in character. Be conversational, not lecturing. 200-500 chars."
+  "monologue": "A 100-400 character first-person monologue from this object to its owner. Personality-driven, witty, observational. Reference specific details from the vision analysis. Make it funny, touching, or surprising — something worth sharing. The object addresses the user directly.",
+  "systemPrompt": "A system prompt for an AI agent that will continue the conversation AS this object. Include: who you are, your personality, your relationship with the owner, what you know. Stay in character. Be conversational, not lecturing. 200-500 chars.",
+  "conversationStarters": ["3 short suggested questions the user might ask this object, 15-40 chars each. Make them fun and specific to THIS object, not generic. E.g., 'What's your morning routine?', 'Who's your favorite owner?', 'Spill the tea on my kitchen'"]
 }
 
 The monologue MUST be between 100-400 characters. This is critical — it will be spoken aloud.
