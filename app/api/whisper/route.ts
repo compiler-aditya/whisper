@@ -40,13 +40,12 @@ export async function POST(req: NextRequest) {
 
         // ── Start facts fetch in background (don't block) ────
         let queries: string[];
-        let artemisDataPromise: Promise<string> | null = null;
 
         if (skyMode) {
-          // Sky mode: fetch Artemis II data + constellation-specific facts
+          // Sky mode: fetch constellation + Artemis facts in background
           const skyFeatures = (vision as unknown as Record<string, unknown>).skyFeatures as { constellations?: string[] } | undefined;
           const constellations = skyFeatures?.constellations || [];
-          queries = ["Artemis II mission latest news trajectory 2025 2026"];
+          queries = ["Artemis II mission latest news 2025 2026"];
 
           // Find matching constellation and add its search queries
           for (const name of constellations) {
@@ -56,11 +55,6 @@ export async function POST(req: NextRequest) {
               break;
             }
           }
-
-          // Fetch Artemis II live data separately for the prompt
-          artemisDataPromise = searchFacts("Artemis II mission current status crew trajectory Moon 2025 2026", 3)
-            .then((facts) => facts.slice(0, 4).join(" "))
-            .catch(() => "Artemis II is NASA's first crewed mission to the Moon in over 50 years, carrying astronauts Reid Wiseman, Victor Glover, Christina Koch, and Jeremy Hansen on a lunar flyby.");
         } else {
           queries = buildSearchQueries(
             vision.objectType,
@@ -85,10 +79,8 @@ export async function POST(req: NextRequest) {
         let entityName: string | undefined;
 
         if (skyMode) {
-          // Wait for Artemis data before generating sky personality
-          const artemisData = artemisDataPromise
-            ? await artemisDataPromise
-            : "Artemis II is NASA's first crewed lunar mission in over 50 years.";
+          // Don't wait for Firecrawl — use static Artemis context for fast personality gen
+          const artemisData = "Artemis II is NASA's first crewed mission to the Moon in over 50 years. The crew — Commander Reid Wiseman, Pilot Victor Glover, Mission Specialists Christina Koch and Jeremy Hansen — will fly around the Moon and return to Earth. Victor Glover is the first person of color on a lunar mission. Jeremy Hansen is the first Canadian to fly to the Moon.";
 
           try {
             personality = await generatePersonality(vision, [], null, false, true, artemisData);
@@ -169,7 +161,11 @@ export async function POST(req: NextRequest) {
         send("voice", { voiceId, audioBase64 });
 
         // ── Stage 4: Facts arrive (may already be done) ──────
-        const facts = await factsPromise;
+        // Cap wait at 5s — if Firecrawl is slow, proceed without facts
+        const facts = await Promise.race([
+          factsPromise,
+          new Promise<string[]>((r) => setTimeout(() => r([]), 5000)),
+        ]);
 
         // Enrich system prompt with facts for conversation mode
         if (facts.length > 0) {
