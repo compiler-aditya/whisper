@@ -4,6 +4,19 @@ import { useCallback } from "react";
 import { useWhisperStore } from "@/store/whisper-store";
 import type { WhisperResult, VisionResult, Personality, ObjectMemory } from "@/types";
 
+export class WhisperError extends Error {
+  code: string;
+  title: string;
+  retryable: boolean;
+  constructor(title: string, message: string, code = "UNKNOWN", retryable = true) {
+    super(message);
+    this.name = "WhisperError";
+    this.title = title;
+    this.code = code;
+    this.retryable = retryable;
+  }
+}
+
 export function useWhisper() {
   const {
     setProcessing,
@@ -138,7 +151,12 @@ export function useWhisper() {
                 break;
 
               case "error":
-                throw new Error(data.message || "Pipeline failed");
+                throw new WhisperError(
+                  data.title || "Something went wrong",
+                  data.message || "Pipeline failed",
+                  data.code || "UNKNOWN",
+                  data.retryable ?? true
+                );
             }
           }
         }
@@ -183,7 +201,17 @@ export function useWhisper() {
       } catch (err) {
         setProcessing(false);
         setRevealData(null);
-        throw err instanceof Error ? err : new Error("Whisper failed");
+        if (err instanceof WhisperError) throw err;
+        // Wrap network/client-side errors into friendly WhisperError
+        const msg = err instanceof Error ? err.message : String(err);
+        if (/network|fetch|Failed to fetch/i.test(msg)) {
+          throw new WhisperError(
+            "Connection interrupted",
+            "Check your internet connection and try again.",
+            "NETWORK"
+          );
+        }
+        throw new WhisperError("Something went wrong", "Please try again.", "UNKNOWN");
       }
     },
     [setProcessing, setProcessingStage, addWhisper, setRevealData, objectMemories, upsertObjectMemory]

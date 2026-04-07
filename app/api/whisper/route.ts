@@ -9,6 +9,60 @@ import type { Personality } from "@/types";
 
 const FALLBACK_VOICE_ID = "pNInz6obpgDQGcFmaJgB";
 
+/** Translate technical errors into friendly user-facing messages. */
+function friendlyError(err: unknown): { title: string; message: string; code: string; retryable: boolean } {
+  const raw = err instanceof Error ? err.message : String(err);
+
+  // Gemini / Google AI errors
+  if (/503|Service Unavailable|high demand/i.test(raw)) {
+    return {
+      code: "AI_BUSY",
+      title: "The stars are busy",
+      message: "Our AI is experiencing high demand right now. Please try again in a moment.",
+      retryable: true,
+    };
+  }
+  if (/429|rate.?limit|quota/i.test(raw)) {
+    return {
+      code: "RATE_LIMIT",
+      title: "Too many whispers",
+      message: "You've sent a lot of requests. Give it a few seconds and try again.",
+      retryable: true,
+    };
+  }
+  if (/401|403|API.?key|unauthori[sz]ed/i.test(raw)) {
+    return {
+      code: "AUTH",
+      title: "Something's off on our end",
+      message: "We're having trouble reaching our services. Please try again shortly.",
+      retryable: true,
+    };
+  }
+  if (/timeout|ETIMEDOUT|ECONNRESET|network|fetch failed/i.test(raw)) {
+    return {
+      code: "NETWORK",
+      title: "Connection interrupted",
+      message: "Check your internet connection and try again.",
+      retryable: true,
+    };
+  }
+  if (/parse|JSON|Failed to parse/i.test(raw)) {
+    return {
+      code: "PARSE",
+      title: "I couldn't read that",
+      message: "I had trouble understanding what I saw. Try a different angle or better lighting.",
+      retryable: true,
+    };
+  }
+
+  return {
+    code: "UNKNOWN",
+    title: "Something went wrong",
+    message: "Please try again. If this keeps happening, reload the page.",
+    retryable: true,
+  };
+}
+
 export async function POST(req: NextRequest) {
   const { imageBase64, location, previousEncounter, assistMode, skyMode } = await req.json();
 
@@ -181,9 +235,8 @@ export async function POST(req: NextRequest) {
           entityName,
         });
       } catch (err) {
-        send("error", {
-          message: err instanceof Error ? err.message : "Something went wrong",
-        });
+        console.error("[whisper pipeline error]", err);
+        send("error", friendlyError(err));
       }
 
       controller.close();

@@ -13,7 +13,8 @@ import DuetMode from "@/components/DuetMode";
 import HistoryDrawer from "@/components/HistoryDrawer";
 import AuthScreen from "@/components/AuthScreen";
 import AccountDrawer from "@/components/AccountDrawer";
-import { useWhisper } from "@/hooks/useWhisper";
+import ErrorModal from "@/components/ErrorModal";
+import { useWhisper, WhisperError } from "@/hooks/useWhisper";
 import { useWhisperStore } from "@/store/whisper-store";
 import { useAuthStore } from "@/store/auth-store";
 import { useGeolocation } from "@/hooks/useGeolocation";
@@ -39,7 +40,8 @@ export default function Home() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errorInfo, setErrorInfo] = useState<{ title: string; message: string; retryable: boolean } | null>(null);
+  const [lastCapture, setLastCapture] = useState<string | null>(null);
   const [cameraMode, setCameraMode] = useState<"character" | "assist" | "sky">("character");
 
   // Sync Google session to local auth store
@@ -54,8 +56,9 @@ export default function Home() {
 
   const handleCapture = useCallback(
     async (imageBase64: string) => {
-      setError(null);
+      setErrorInfo(null);
       setSheetOpen(false);
+      setLastCapture(imageBase64);
 
       try {
         const location = await getLocation();
@@ -80,12 +83,27 @@ export default function Home() {
           }
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Something went wrong");
+        if (err instanceof WhisperError) {
+          setErrorInfo({ title: err.title, message: err.message, retryable: err.retryable });
+        } else {
+          setErrorInfo({
+            title: "Something went wrong",
+            message: "Please try again.",
+            retryable: true,
+          });
+        }
         setProcessing(false);
       }
     },
     [startWhisper, getLocation, setProcessing, addMapPin, cameraMode]
   );
+
+  const handleRetry = useCallback(() => {
+    setErrorInfo(null);
+    if (lastCapture) {
+      handleCapture(lastCapture);
+    }
+  }, [lastCapture, handleCapture]);
 
   // Called when reveal audio finishes — transition to bottom sheet
   const handleRevealFinished = useCallback(() => {
@@ -100,14 +118,14 @@ export default function Home() {
     setCurrentWhisper(null);
     setRevealData(null);
     setProcessing(false);
-    setError(null);
+    setErrorInfo(null);
   }, [setCurrentWhisper, setProcessing, setRevealData]);
 
   const handleClose = useCallback(() => {
     setSheetOpen(false);
     setCurrentWhisper(null);
     setProcessing(false);
-    setError(null);
+    setErrorInfo(null);
   }, [setCurrentWhisper, setProcessing]);
 
   const handleHistorySelect = useCallback(
@@ -147,21 +165,15 @@ export default function Home() {
         />
       )}
 
-      {/* Error toast */}
-      {error && (
-        <div className="absolute top-12 left-4 right-4 z-40 animate-fade-in">
-          <div className="px-5 py-3 text-center" style={{ background: "var(--surface)", border: "1px solid rgba(212,68,59,0.2)", borderRadius: 12 }}>
-            <p className="text-sm" style={{ color: "var(--danger)" }}>{error}</p>
-            <button
-              onClick={() => setError(null)}
-              className="text-xs mt-1 transition-colors"
-              style={{ color: "var(--text-muted)" }}
-            >
-              Dismiss
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Error modal popup */}
+      <ErrorModal
+        open={!!errorInfo}
+        title={errorInfo?.title || ""}
+        message={errorInfo?.message || ""}
+        retryable={errorInfo?.retryable ?? true}
+        onClose={() => setErrorInfo(null)}
+        onRetry={handleRetry}
+      />
 
       {/* Result bottom sheet */}
       <BottomSheet open={sheetOpen} onClose={handleClose}>
